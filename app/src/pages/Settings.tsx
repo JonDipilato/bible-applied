@@ -7,7 +7,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { ai } from '../api/ai';
 import { settings as settingsApi } from '../api/settings';
 import { cn } from '../lib/utils';
-import type { LLMProvider, Settings } from '../lib/types';
+import type { LLMProvider, Settings as SettingsType } from '../lib/types';
 
 export const Settings: React.FC = () => {
   const {
@@ -55,13 +55,13 @@ export const Settings: React.FC = () => {
     }
   };
 
-  const themeOptions: { value: Settings['theme']; label: string; icon: React.ElementType }[] = [
+  const themeOptions: { value: SettingsType['theme']; label: string; icon: React.ElementType }[] = [
     { value: 'light', label: 'Light', icon: Sun },
     { value: 'dark', label: 'Dark', icon: Moon },
     { value: 'system', label: 'System', icon: Monitor },
   ];
 
-  const fontSizeOptions: { value: Settings['fontSize']; label: string }[] = [
+  const fontSizeOptions: { value: SettingsType['fontSize']; label: string }[] = [
     { value: 'small', label: 'Small' },
     { value: 'medium', label: 'Medium' },
     { value: 'large', label: 'Large' },

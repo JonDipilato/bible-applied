@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
@@ -19,7 +19,7 @@ import { ai } from '../api/ai';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { cn, formatReference } from '../lib/utils';
-import type { VerseWithBook, VerseApplication, ActionStep, ReflectionQuestion } from '../lib/types';
+import type { ActionStep, ReflectionQuestion } from '../lib/types';
 
 export function VerseDetail() {
   const { id } = useParams<{ id: string }>();
@@ -58,8 +58,8 @@ export function VerseDetail() {
     mutationFn: async () => {
       if (!verse) throw new Error('Verse not loaded');
       const reference = formatReference(verse.bookName, verse.chapter, verse.verse);
-      // Use "life" as default topic if not available
-      const topic = application?.topic || 'life';
+      // Use "life" as default topic
+      const topic = 'life';
       return ai.generateActionSteps(verse.text, reference, topic);
     },
   });
@@ -301,7 +301,7 @@ function ActionSteps({ steps, onGenerate, isGenerating, generatedContent, error 
         <p className="text-secondary">No action steps available for this verse yet.</p>
         {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           className="mt-4"
           onClick={onGenerate}
@@ -403,7 +403,7 @@ function ReflectionQuestions({ questions, onGenerate, isGenerating, generatedCon
         <p className="text-secondary">No reflection questions available for this verse yet.</p>
         {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           className="mt-4"
           onClick={onGenerate}

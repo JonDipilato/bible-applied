@@ -275,39 +275,48 @@ export const mockApplicationApi = {
   },
 };
 
-// Check if Tauri is available (lazy check for each call)
+// Check if Tauri is available
 // Tauri 2.x uses __TAURI_INTERNALS__ instead of __TAURI__
-const isTauriAvailable = () => {
+const isTauriAvailable = (): boolean => {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 };
 
-// Create proxy objects that check Tauri availability on each call
-const createApiProxy = <T extends Record<string, (...args: unknown[]) => Promise<unknown>>>(
-  tauriApi: T,
-  mockApi: T,
-  apiName: string
-): T => {
-  return new Proxy({} as T, {
-    get(_target, prop: keyof T) {
-      return async (...args: unknown[]) => {
-        const tauriAvail = isTauriAvailable();
-        console.log(`[${apiName}] ${String(prop)} - Tauri available: ${tauriAvail}, args:`, args);
-        const apiToUse = tauriAvail ? tauriApi : mockApi;
-        try {
-          const result = await (apiToUse[prop] as (...args: unknown[]) => Promise<unknown>)(...args);
-          console.log(`[${apiName}] ${String(prop)} - Result count:`, Array.isArray(result) ? result.length : 'N/A');
-          return result;
-        } catch (error) {
-          console.error(`[${apiName}] ${String(prop)} - Error:`, error);
-          throw error;
-        }
-      };
-    },
-  });
-};
-
+// Unified API that switches between Tauri and mock based on availability
 export const api = {
-  bible: createApiProxy(bibleApi, mockBibleApi, 'Bible API'),
-  topics: createApiProxy(topicsApi, mockTopicsApi, 'Topics API'),
-  application: createApiProxy(applicationApi, mockApplicationApi, 'Application API'),
+  bible: {
+    getBooks: async (): Promise<Book[]> => {
+      return isTauriAvailable() ? bibleApi.getBooks() : mockBibleApi.getBooks();
+    },
+    getVerses: async (bookId: number, chapter: number): Promise<Verse[]> => {
+      return isTauriAvailable() ? bibleApi.getVerses(bookId, chapter) : mockBibleApi.getVerses(bookId, chapter);
+    },
+    getVerse: async (verseId: number): Promise<VerseWithBook> => {
+      return isTauriAvailable() ? bibleApi.getVerse(verseId) : mockBibleApi.getVerse(verseId);
+    },
+    getVerseByReference: async (reference: string): Promise<VerseWithBook> => {
+      return isTauriAvailable() ? bibleApi.getVerseByReference(reference) : mockBibleApi.getVerseByReference(reference);
+    },
+    getRandomVerse: async (topicId?: number): Promise<VerseWithBook> => {
+      return isTauriAvailable() ? bibleApi.getRandomVerse(topicId) : mockBibleApi.getRandomVerse(topicId);
+    },
+    searchVerses: async (query: string, limit?: number): Promise<VerseWithBook[]> => {
+      return isTauriAvailable() ? bibleApi.searchVerses(query, limit) : mockBibleApi.searchVerses(query, limit);
+    },
+  },
+  topics: {
+    getTopics: async (): Promise<Topic[]> => {
+      return isTauriAvailable() ? topicsApi.getTopics() : mockTopicsApi.getTopics();
+    },
+    getVersesByTopic: async (topicId: number, limit?: number): Promise<VerseWithTopic[]> => {
+      return isTauriAvailable() ? topicsApi.getVersesByTopic(topicId, limit) : mockTopicsApi.getVersesByTopic(topicId, limit);
+    },
+    getTopicBySlug: async (slug: string): Promise<Topic> => {
+      return isTauriAvailable() ? topicsApi.getTopicBySlug(slug) : mockTopicsApi.getTopicBySlug(slug);
+    },
+  },
+  application: {
+    getVerseApplication: async (verseId: number): Promise<VerseApplication> => {
+      return isTauriAvailable() ? applicationApi.getVerseApplication(verseId) : mockApplicationApi.getVerseApplication(verseId);
+    },
+  },
 };

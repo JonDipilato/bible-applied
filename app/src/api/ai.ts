@@ -45,7 +45,8 @@ export const mockAiApi = {
     };
   },
 
-  getInsight: async (verseText: string, reference: string): Promise<AiInsight> => {
+  getInsight: async (_verseText: string, _reference: string): Promise<AiInsight> => {
+    void _verseText; void _reference; // Suppress unused warnings
     // Simulate AI response delay
     await new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -64,6 +65,7 @@ export const mockAiApi = {
   },
 
   generateActionSteps: async (_verseText: string, _reference: string, topic: string): Promise<AiInsight> => {
+    void _verseText; void _reference; // Suppress unused warnings
     await new Promise(resolve => setTimeout(resolve, 1200));
 
     const steps = `1. **[Easy]** Set aside 5 minutes each morning this week to meditate on this verse and how it relates to ${topic.toLowerCase()} in your life.
@@ -79,6 +81,7 @@ export const mockAiApi = {
   },
 
   generateReflectionQuestions: async (_verseText: string, _reference: string): Promise<AiInsight> => {
+    void _verseText; void _reference; // Suppress unused warnings
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     const questions = `**Personal:** What emotions or memories does this verse stir up in you? How might God be speaking to your current situation through these words?
@@ -96,32 +99,24 @@ export const mockAiApi = {
   },
 };
 
-// Check if Tauri is available (lazy check for each call)
+// Check if Tauri is available
 // Tauri 2.x uses __TAURI_INTERNALS__ instead of __TAURI__
-const isTauriAvailable = () => {
+const isTauriAvailable = (): boolean => {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 };
 
-// Create proxy object that checks Tauri availability on each call
-type AiApiType = typeof aiApi;
-const createAiProxy = (): AiApiType => {
-  return new Proxy({} as AiApiType, {
-    get(_target, prop: keyof AiApiType) {
-      return async (...args: Parameters<AiApiType[typeof prop]>) => {
-        const tauriAvail = isTauriAvailable();
-        console.log(`[AI API] ${prop} - Tauri available: ${tauriAvail}`);
-        const apiToUse = tauriAvail ? aiApi : mockAiApi;
-        try {
-          const result = await (apiToUse[prop] as (...args: unknown[]) => Promise<unknown>)(...args);
-          console.log(`[AI API] ${prop} - Success:`, result);
-          return result;
-        } catch (error) {
-          console.error(`[AI API] ${prop} - Error:`, error);
-          throw error;
-        }
-      };
-    },
-  });
+// Unified AI API that switches between Tauri and mock based on availability
+export const ai = {
+  checkConnection: async (): Promise<LlmStatus> => {
+    return isTauriAvailable() ? aiApi.checkConnection() : mockAiApi.checkConnection();
+  },
+  getInsight: async (verseText: string, reference: string): Promise<AiInsight> => {
+    return isTauriAvailable() ? aiApi.getInsight(verseText, reference) : mockAiApi.getInsight(verseText, reference);
+  },
+  generateActionSteps: async (verseText: string, reference: string, topic: string): Promise<AiInsight> => {
+    return isTauriAvailable() ? aiApi.generateActionSteps(verseText, reference, topic) : mockAiApi.generateActionSteps(verseText, reference, topic);
+  },
+  generateReflectionQuestions: async (verseText: string, reference: string): Promise<AiInsight> => {
+    return isTauriAvailable() ? aiApi.generateReflectionQuestions(verseText, reference) : mockAiApi.generateReflectionQuestions(verseText, reference);
+  },
 };
-
-export const ai = createAiProxy();
