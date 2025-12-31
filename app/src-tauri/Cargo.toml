@@ -1,0 +1,42 @@
+[package]
+name = "bible-verse-hunter"
+version = "0.1.0"
+description = "KJV Bible Verse Hunter - Find wisdom, apply truth, transform your life"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "bible_verse_hunter_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Database
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP client for LLM APIs
+reqwest = { version = "0.12", features = ["json"] }
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID for unique IDs
+uuid = { version = "1.11", features = ["v4", "serde"] }
