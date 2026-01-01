@@ -1,4 +1,35 @@
 use rusqlite::{Connection, Result, params};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct BibleVerse {
+    b: i64,  // book_id
+    c: i64,  // chapter
+    v: i64,  // verse
+    t: String, // text
+}
+
+/// Seeds all 31,100 verses from the KJV Bible
+pub fn seed_full_bible(conn: &Connection) -> Result<()> {
+    let json_data = include_str!("../data/kjv_verses.json");
+    let verses: Vec<BibleVerse> = serde_json::from_str(json_data)
+        .expect("Failed to parse KJV Bible JSON");
+
+    // Use a transaction for much faster inserts
+    conn.execute("BEGIN TRANSACTION", [])?;
+
+    for verse in &verses {
+        conn.execute(
+            "INSERT OR IGNORE INTO verses (book_id, chapter, verse, text) VALUES (?1, ?2, ?3, ?4)",
+            params![verse.b, verse.c, verse.v, verse.t],
+        )?;
+    }
+
+    conn.execute("COMMIT", [])?;
+
+    println!("Seeded {} verses from the KJV Bible", verses.len());
+    Ok(())
+}
 
 pub fn seed_books(conn: &Connection) -> Result<()> {
     let books = vec![
@@ -83,7 +114,8 @@ pub fn seed_books(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-pub fn seed_topical_verses(conn: &Connection) -> Result<()> {
+/// Links verses to their relevant topics (called after seed_full_bible)
+pub fn seed_topic_associations(conn: &Connection) -> Result<()> {
     // Get topic IDs
     let finances_id: i64 = conn.query_row("SELECT id FROM topics WHERE slug = 'finances'", [], |r| r.get(0))?;
     let marriage_id: i64 = conn.query_row("SELECT id FROM topics WHERE slug = 'marriage'", [], |r| r.get(0))?;
@@ -549,25 +581,21 @@ pub fn seed_topical_verses(conn: &Connection) -> Result<()> {
     ];
 
     for (topic_id, verses) in all_verse_sets {
-        for (book_id, chapter, verse, text, relevance) in verses {
-            // Insert verse
-            conn.execute(
-                "INSERT OR IGNORE INTO verses (book_id, chapter, verse, text) VALUES (?1, ?2, ?3, ?4)",
-                params![book_id, chapter, verse, text],
-            )?;
-
-            // Get the verse ID
-            let verse_id: i64 = conn.query_row(
+        for (book_id, chapter, verse, _text, relevance) in verses {
+            // Get the verse ID (verse should already exist from seed_full_bible)
+            let verse_id: Result<i64, _> = conn.query_row(
                 "SELECT id FROM verses WHERE book_id = ?1 AND chapter = ?2 AND verse = ?3",
                 params![book_id, chapter, verse],
                 |row| row.get(0),
-            )?;
+            );
 
-            // Link to topic
-            conn.execute(
-                "INSERT OR IGNORE INTO verse_topics (verse_id, topic_id, relevance_score, is_primary) VALUES (?1, ?2, ?3, 1)",
-                params![verse_id, topic_id, relevance],
-            )?;
+            if let Ok(vid) = verse_id {
+                // Link to topic
+                conn.execute(
+                    "INSERT OR IGNORE INTO verse_topics (verse_id, topic_id, relevance_score, is_primary) VALUES (?1, ?2, ?3, 1)",
+                    params![vid, topic_id, relevance],
+                )?;
+            }
         }
     }
 

@@ -41,7 +41,7 @@ impl Database {
             seed::seed_books(&self.conn)?;
         }
 
-        // Seed topical verses if empty
+        // Seed all Bible verses if empty
         let verse_count: i64 = self.conn.query_row(
             "SELECT COUNT(*) FROM verses",
             [],
@@ -49,7 +49,11 @@ impl Database {
         )?;
 
         if verse_count == 0 {
-            seed::seed_topical_verses(&self.conn)?;
+            // Seed the full KJV Bible (31,100 verses)
+            seed::seed_full_bible(&self.conn)?;
+            // Then seed topic associations for key verses
+            seed::seed_topic_associations(&self.conn)?;
+            // Seed action steps and reflection questions
             seed::seed_action_steps(&self.conn)?;
             seed::seed_reflection_questions(&self.conn)?;
         }
