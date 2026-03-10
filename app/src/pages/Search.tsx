@@ -27,12 +27,14 @@ export const Search: React.FC = () => {
     }
   }, [searchParams]);
 
-  const performSearch = async (searchQuery: string, _useAI: boolean) => {
+  const performSearch = async (searchQuery: string, useAI: boolean) => {
     setLoading(true);
     setSearched(true);
 
     try {
-      const searchResults = await api.bible.searchVerses(searchQuery, 50);
+      const searchResults = useAI
+        ? await api.bible.searchVersesAi(searchQuery, 50)
+        : await api.bible.searchVerses(searchQuery, 50);
       setResults(searchResults);
     } catch (error) {
       console.error('Search failed:', error);
@@ -46,6 +48,14 @@ export const Search: React.FC = () => {
     e.preventDefault();
     if (query.trim()) {
       setSearchParams({ q: query, ai: String(isAI) });
+    }
+  };
+
+  const toggleAiSearch = () => {
+    const next = !isAI;
+    setIsAI(next);
+    if (query.trim()) {
+      setSearchParams({ q: query, ai: String(next) });
     }
   };
 
@@ -88,7 +98,7 @@ export const Search: React.FC = () => {
         <div className="flex items-center gap-4">
           <button
             type="button"
-            onClick={() => setIsAI(!isAI)}
+            onClick={toggleAiSearch}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
               isAI
                 ? 'border-brand-secondary bg-brand-secondary/10 text-brand-secondary'

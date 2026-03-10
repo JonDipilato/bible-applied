@@ -158,14 +158,18 @@ impl LlmClient {
     }
 
     pub async fn generate(&self, prompt: &str, system_prompt: Option<&str>) -> Result<LlmResponse, String> {
+        self.generate_with_tokens(prompt, system_prompt, 1024).await
+    }
+
+    pub async fn generate_with_tokens(&self, prompt: &str, system_prompt: Option<&str>, max_tokens: u32) -> Result<LlmResponse, String> {
         match self.config.provider.as_str() {
-            "lmstudio" | "openai" => self.call_openai_compatible(prompt, system_prompt).await,
-            "claude" => self.call_claude(prompt, system_prompt).await,
+            "lmstudio" | "openai" => self.call_openai_compatible(prompt, system_prompt, max_tokens).await,
+            "claude" => self.call_claude(prompt, system_prompt, max_tokens).await,
             _ => Err(format!("Unsupported provider: {}", self.config.provider)),
         }
     }
 
-    async fn call_openai_compatible(&self, prompt: &str, system_prompt: Option<&str>) -> Result<LlmResponse, String> {
+    async fn call_openai_compatible(&self, prompt: &str, system_prompt: Option<&str>, max_tokens: u32) -> Result<LlmResponse, String> {
         let base_url = self.get_base_url();
         println!("[LLM] Using base_url: {}", base_url);
 
@@ -207,7 +211,7 @@ impl LlmClient {
         let request = OpenAiRequest {
             model,
             messages,
-            max_tokens: Some(1024),
+            max_tokens: Some(max_tokens),
             temperature: Some(0.7),
         };
 
@@ -272,7 +276,7 @@ impl LlmClient {
         })
     }
 
-    async fn call_claude(&self, prompt: &str, system_prompt: Option<&str>) -> Result<LlmResponse, String> {
+    async fn call_claude(&self, prompt: &str, system_prompt: Option<&str>, max_tokens: u32) -> Result<LlmResponse, String> {
         let api_key = self.config.api_key.clone()
             .ok_or_else(|| "Claude API key required".to_string())?;
 
@@ -295,7 +299,7 @@ impl LlmClient {
 
         let request = ClaudeRequest {
             model,
-            max_tokens: 1024,
+            max_tokens,
             messages,
         };
 
@@ -441,6 +445,30 @@ Create one question for each category:
 4. Practical: What concrete action can I take?
 
 Make questions thought-provoking but not overwhelming."#,
+            reference, verse_text
+        )
+    }
+
+    pub fn word_study_prompt(verse_text: &str, reference: &str) -> String {
+        format!(
+            r#"Perform a word study on this KJV Bible verse:
+
+{} - "{}"
+
+Identify 2-4 key words in this verse that carry significant meaning in the original language. For each word:
+
+**[English Word]** — *[Original Hebrew/Greek word in transliteration]*
+- **Original Language:** Hebrew (OT) or Greek (NT)
+- **Transliteration:** The phonetic spelling
+- **Strong's Reference:** The Strong's Concordance number if known
+- **Root Meaning:** The literal, root-level meaning of the word
+- **Expanded Definition:** A fuller definition showing the depth and nuance of this word — what English fails to capture
+- **Usage in Context:** How this specific meaning shapes the understanding of this verse
+- **Cross-Reference:** One other verse where this same word appears, showing its consistent meaning
+
+After the individual word studies, provide a brief **Deeper Reading** paragraph (3-4 sentences) explaining how understanding these original words transforms the meaning of the full verse compared to a surface-level English reading.
+
+Use markdown formatting with **bold** for labels and *italics* for original language terms."#,
             reference, verse_text
         )
     }

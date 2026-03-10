@@ -53,6 +53,7 @@ pub fn run() {
             commands::get_verse_application,
             // Search commands
             commands::search_verses,
+            commands::search_verses_ai,
             // User data commands
             commands::create_note,
             commands::get_notes,
@@ -66,6 +67,7 @@ pub fn run() {
             commands::get_ai_insight,
             commands::generate_action_steps,
             commands::generate_reflection_questions,
+            commands::generate_word_study,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

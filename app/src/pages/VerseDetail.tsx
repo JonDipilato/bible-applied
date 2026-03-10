@@ -10,6 +10,7 @@ import {
   Sparkles,
   CheckCircle2,
   HelpCircle,
+  BookOpen,
   Loader2,
   ChevronDown,
   ChevronUp
@@ -18,6 +19,7 @@ import { api } from '../api/bible';
 import { ai } from '../api/ai';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { MarkdownText } from '../components/ui/MarkdownText';
 import { cn, formatReference } from '../lib/utils';
 import type { ActionStep, ReflectionQuestion } from '../lib/types';
 
@@ -26,7 +28,7 @@ export function VerseDetail() {
   const navigate = useNavigate();
   const [showAiInsight, setShowAiInsight] = useState(false);
   const [aiInsightExpanded, setAiInsightExpanded] = useState(true);
-  const [activeTab, setActiveTab] = useState<'actions' | 'questions' | 'ai'>('actions');
+  const [activeTab, setActiveTab] = useState<'actions' | 'questions' | 'wordstudy'>('actions');
 
   const verseId = id ? parseInt(id, 10) : 0;
 
@@ -73,6 +75,15 @@ export function VerseDetail() {
     },
   });
 
+  // Word study mutation
+  const wordStudyMutation = useMutation({
+    mutationFn: async () => {
+      if (!verse) throw new Error('Verse not loaded');
+      const reference = formatReference(verse.bookName, verse.chapter, verse.verse);
+      return ai.generateWordStudy(verse.text, reference);
+    },
+  });
+
   const handleGetAiInsight = () => {
     setShowAiInsight(true);
     aiInsightMutation.mutate();
@@ -84,6 +95,10 @@ export function VerseDetail() {
 
   const handleGenerateReflections = () => {
     reflectionMutation.mutate();
+  };
+
+  const handleGenerateWordStudy = () => {
+    wordStudyMutation.mutate();
   };
 
   if (verseLoading) {
@@ -183,8 +198,8 @@ export function VerseDetail() {
               ) : aiInsightMutation.isError ? (
                 <p className="text-red-500">Failed to generate insight. Please try again.</p>
               ) : aiInsightMutation.data ? (
-                <div className="prose prose-sm max-w-none text-primary">
-                  <div className="whitespace-pre-wrap">{aiInsightMutation.data.content}</div>
+                <div className="max-w-none">
+                  <MarkdownText content={aiInsightMutation.data.content} />
                   <p className="text-xs text-secondary mt-3">
                     Tokens used: {aiInsightMutation.data.tokensUsed}
                   </p>
@@ -222,6 +237,18 @@ export function VerseDetail() {
             <HelpCircle className="h-4 w-4 inline mr-2" />
             Reflection Questions
           </button>
+          <button
+            className={cn(
+              'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+              activeTab === 'wordstudy'
+                ? 'border-brand-primary text-brand-primary'
+                : 'border-transparent text-secondary hover:text-primary'
+            )}
+            onClick={() => setActiveTab('wordstudy')}
+          >
+            <BookOpen className="h-4 w-4 inline mr-2" />
+            Word Study
+          </button>
         </div>
       </div>
 
@@ -249,6 +276,15 @@ export function VerseDetail() {
                 isGenerating={reflectionMutation.isPending}
                 generatedContent={reflectionMutation.data?.content}
                 error={reflectionMutation.isError ? 'Failed to generate reflection questions' : undefined}
+              />
+            )}
+            {activeTab === 'wordstudy' && (
+              <WordStudy
+                onGenerate={handleGenerateWordStudy}
+                isGenerating={wordStudyMutation.isPending}
+                generatedContent={wordStudyMutation.data?.content}
+                tokensUsed={wordStudyMutation.data?.tokensUsed}
+                error={wordStudyMutation.isError ? 'Failed to generate word study' : undefined}
               />
             )}
           </>
@@ -287,9 +323,7 @@ function ActionSteps({ steps, onGenerate, isGenerating, generatedContent, error 
           <Sparkles className="h-5 w-5 text-brand-primary" />
           <span className="font-semibold text-primary">AI-Generated Action Steps</span>
         </div>
-        <div className="prose prose-sm max-w-none text-primary whitespace-pre-wrap">
-          {generatedContent}
-        </div>
+        <MarkdownText content={generatedContent} />
       </Card>
     );
   }
@@ -389,9 +423,7 @@ function ReflectionQuestions({ questions, onGenerate, isGenerating, generatedCon
           <Sparkles className="h-5 w-5 text-brand-primary" />
           <span className="font-semibold text-primary">AI-Generated Reflection Questions</span>
         </div>
-        <div className="prose prose-sm max-w-none text-primary whitespace-pre-wrap">
-          {generatedContent}
-        </div>
+        <MarkdownText content={generatedContent} />
       </Card>
     );
   }
@@ -475,6 +507,57 @@ function ReflectionQuestions({ questions, onGenerate, isGenerating, generatedCon
           </div>
         </Card>
       ))}
+    </div>
+  );
+}
+
+interface WordStudyProps {
+  onGenerate: () => void;
+  isGenerating: boolean;
+  generatedContent?: string;
+  tokensUsed?: number;
+  error?: string;
+}
+
+function WordStudy({ onGenerate, isGenerating, generatedContent, tokensUsed, error }: WordStudyProps) {
+  if (generatedContent) {
+    return (
+      <Card className="p-6 bg-gradient-to-br from-brand-secondary/5 to-brand-accent/5 border-brand-secondary/20">
+        <div className="flex items-center gap-2 mb-4">
+          <BookOpen className="h-5 w-5 text-brand-secondary" />
+          <span className="font-semibold text-primary">Hebrew & Greek Word Study</span>
+        </div>
+        <MarkdownText content={generatedContent} />
+        {tokensUsed && (
+          <p className="text-xs text-secondary mt-4">
+            Tokens used: {tokensUsed}
+          </p>
+        )}
+      </Card>
+    );
+  }
+
+  return (
+    <div className="text-center py-8">
+      <BookOpen className="h-12 w-12 text-secondary mx-auto mb-3" />
+      <p className="text-secondary mb-1">Dig into the original Hebrew & Greek</p>
+      <p className="text-sm text-muted mb-4">
+        Explore etymology, root meanings, and Strong's references to unlock deeper understanding.
+      </p>
+      {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={onGenerate}
+        disabled={isGenerating}
+      >
+        {isGenerating ? (
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        ) : (
+          <Sparkles className="h-4 w-4 mr-2" />
+        )}
+        {isGenerating ? 'Analyzing original languages...' : 'Generate Word Study'}
+      </Button>
     </div>
   );
 }

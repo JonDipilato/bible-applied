@@ -1,5 +1,6 @@
 use tauri::State;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use crate::AppState;
 use crate::models::*;
 use crate::llm::{LlmClient, LlmConfig, prompts};
@@ -67,6 +68,77 @@ pub fn get_verse_application(state: State<'_, AppState>, verse_id: i64) -> Resul
 pub fn search_verses(state: State<'_, AppState>, query: String, limit: Option<i64>) -> Result<Vec<VerseWithBook>, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     db.search_verses(&query, limit).map_err(|e| e.to_string())
+}
+
+fn parse_ai_terms(raw: &str) -> Vec<String> {
+    raw.split(|c| c == ',' || c == '\n' || c == ';')
+        .map(|term| {
+            let trimmed = term.trim();
+            let trimmed = trimmed.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.' || c == ')' || c == '(');
+            let trimmed = trimmed.trim_start_matches(|c: char| c == '-' || c == '*' || c == '•');
+            let trimmed = trimmed.trim_matches(|c: char| c == '"' || c == '\'');
+            let trimmed = trimmed.trim_end_matches(|c: char| c == '.' || c == ';');
+            trimmed.trim().to_string()
+        })
+        .filter(|term| !term.is_empty())
+        .collect()
+}
+
+#[tauri::command]
+pub async fn search_verses_ai(
+    state: State<'_, AppState>,
+    query: String,
+    limit: Option<i64>,
+) -> Result<Vec<VerseWithBook>, String> {
+    let settings = {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        db.get_settings().map_err(|e| e.to_string())?
+    };
+
+    let config = LlmConfig {
+        provider: settings.llm_provider,
+        base_url: settings.llm_base_url,
+        model: settings.llm_model,
+        api_key: settings.llm_api_key,
+    };
+
+    let client = LlmClient::new(config);
+    let prompt = prompts::semantic_search_prompt(&query);
+    let response = client.generate(&prompt, None).await?;
+
+    let mut terms = Vec::new();
+    terms.push(query.clone());
+    terms.extend(parse_ai_terms(&response.text));
+
+    let mut unique_terms = Vec::new();
+    let mut seen_terms = HashSet::new();
+    for term in terms {
+        let key = term.to_lowercase();
+        if seen_terms.insert(key) {
+            unique_terms.push(term);
+        }
+    }
+
+    let total_limit = limit.unwrap_or(50).max(1);
+    let per_term_limit = std::cmp::max(5, total_limit / unique_terms.len().max(1) as i64);
+
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let mut results = Vec::new();
+    let mut seen = HashSet::new();
+
+    for term in unique_terms {
+        let verses = db.search_verses(&term, Some(per_term_limit)).map_err(|e| e.to_string())?;
+        for verse in verses {
+            if seen.insert(verse.id) {
+                results.push(verse);
+                if results.len() >= total_limit as usize {
+                    return Ok(results);
+                }
+            }
+        }
+    }
+
+    Ok(results)
 }
 
 // User Data Commands
@@ -265,6 +337,36 @@ pub async fn generate_reflection_questions(
     let prompt = prompts::reflection_questions_prompt(&verse_text, &reference);
 
     let response = client.generate(&prompt, Some(prompts::SYSTEM_PROMPT)).await?;
+
+    Ok(AiInsight {
+        content: response.text,
+        tokens_used: response.input_tokens + response.output_tokens,
+    })
+}
+
+#[tauri::command]
+pub async fn generate_word_study(
+    state: State<'_, AppState>,
+    verse_text: String,
+    reference: String,
+) -> Result<AiInsight, String> {
+    let settings = {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        db.get_settings().map_err(|e| e.to_string())?
+    };
+
+    let config = LlmConfig {
+        provider: settings.llm_provider,
+        base_url: settings.llm_base_url,
+        model: settings.llm_model,
+        api_key: settings.llm_api_key,
+    };
+
+    let client = LlmClient::new(config);
+    let prompt = prompts::word_study_prompt(&verse_text, &reference);
+
+    // Word studies need more tokens for full etymology breakdowns
+    let response = client.generate_with_tokens(&prompt, Some(prompts::SYSTEM_PROMPT), 3000).await?;
 
     Ok(AiInsight {
         content: response.text,
