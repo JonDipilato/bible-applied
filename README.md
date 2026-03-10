@@ -13,14 +13,34 @@ A beautiful desktop app for exploring KJV Bible verses with AI-powered insights,
 - Personal notes and highlights
 - Dark/Light mode support
 
-## Download
+## Quick Install
 
-Download the latest release for your platform:
+The easiest way to get started — open your terminal and run:
+
+```bash
+npx verse-forge
+```
+
+That's it. The guided installer will:
+1. Detect your operating system
+2. Download the right version for you
+3. Walk you through AI setup step-by-step
+4. Teach you how to use every feature
+
+> **Don't have Node.js?** Download it free at [nodejs.org](https://nodejs.org/) first, then run the command above.
+
+## Manual Download
+
+If you prefer to download directly:
 **[Releases](https://github.com/JonDipilato/bible-applied/releases)**
 
-- **Windows**: `.msi` or `.exe` installer
-- **macOS**: `.dmg` (Intel & Apple Silicon)
-- **Linux**: `.deb` or `.AppImage`
+| Platform | File |
+|----------|------|
+| Windows | `.msi` or `.exe` installer |
+| macOS (Apple Silicon) | `.dmg` (aarch64) |
+| macOS (Intel) | `.dmg` (x64) |
+| Linux (Debian/Ubuntu) | `.deb` |
+| Linux (Other) | `.AppImage` |
 
 ---
 
@@ -131,6 +151,30 @@ Installers will be in `src-tauri/target/release/bundle/`
 - **Backend**: Rust, Tauri 2.0
 - **Database**: SQLite (embedded)
 - **AI**: OpenAI-compatible API (LM Studio, Ollama, OpenAI, Claude)
+
+---
+
+## Need Help?
+
+**Stuck on something?** Run the guided setup again anytime:
+
+```bash
+npx verse-forge
+```
+
+Choose from the menu:
+- **"Install Bible Verse Hunter"** — re-downloads the latest version for your OS
+- **"Set up AI provider"** — step-by-step walkthrough for LM Studio, Ollama, OpenAI, or Claude
+- **"Learn the app"** — 7-page feature tour showing everything the app can do
+- **"Build from source"** — checks your dev tools and guides you through building
+
+**Common issues:**
+- **App won't start?** Make sure you ran the installer, not just downloaded the file
+- **AI not working?** Go to Settings > Test Connection to verify your provider is running
+- **LM Studio / Ollama connection fails?** Make sure the local server is running before testing
+- **Need a free AI option?** Choose LM Studio or Ollama — both are free and run on your computer
+
+**Still stuck?** [Open an issue](https://github.com/JonDipilato/bible-applied/issues)
 
 ## License
 

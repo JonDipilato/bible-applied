@@ -1,0 +1,35 @@
+{
+  "name": "verse-forge",
+  "version": "1.0.0",
+  "description": "Install and set up Bible Verse Hunter — AI-powered KJV Bible study for Windows, macOS, and Linux",
+  "type": "module",
+  "bin": {
+    "verse-forge": "./bin/verse-forge.js"
+  },
+  "files": [
+    "bin",
+    "lib"
+  ],
+  "keywords": [
+    "bible",
+    "kjv",
+    "scripture",
+    "verse",
+    "christian",
+    "ai",
+    "study",
+    "installer",
+    "tauri",
+    "desktop-app"
+  ],
+  "author": "Jon DiPilato",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JonDipilato/bible-applied"
+  },
+  "homepage": "https://github.com/JonDipilato/bible-applied",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
