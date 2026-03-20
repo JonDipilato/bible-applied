@@ -119,7 +119,8 @@ impl LlmClient {
             }
         });
 
-        let base_url = raw_base_url.trim_end_matches('/').to_string();
+        // Trim whitespace and trailing slashes
+        let base_url = raw_base_url.trim().trim_end_matches('/').to_string();
 
         // Ensure /v1 suffix for LM Studio compatibility
         if !base_url.ends_with("/v1") {
@@ -174,8 +175,9 @@ impl LlmClient {
         println!("[LLM] Using base_url: {}", base_url);
 
         // Get model name - for LM Studio, try to fetch actual model if not configured
-        let model = if let Some(m) = self.config.model.clone() {
-            m
+        let configured_model = self.config.model.as_deref().map(|m| m.trim()).unwrap_or("");
+        let model = if !configured_model.is_empty() && configured_model != "default" {
+            configured_model.to_string()
         } else if self.config.provider == "openai" {
             "gpt-4o-mini".to_string()
         } else {
